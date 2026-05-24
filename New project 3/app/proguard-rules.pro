@@ -1,0 +1,3 @@
+-keep class com.restopro.captain.data.remote.dto.** { *; }
+-keep class io.socket.** { *; }
+-keep class org.json.** { *; }
