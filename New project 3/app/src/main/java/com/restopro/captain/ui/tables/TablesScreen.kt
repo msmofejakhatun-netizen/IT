@@ -41,14 +41,14 @@ fun TablesScreen(
         Row(Modifier.fillMaxWidth()) {
             IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, contentDescription = "Back") }
             Column {
-                Text("Tables", style = MaterialTheme.typography.headlineSmall)
-                Text("Hall sections and live table states", color = MaterialTheme.colorScheme.secondary)
+                Text("Table Management", style = MaterialTheme.typography.headlineSmall)
+                Text("Live floor status", color = MaterialTheme.colorScheme.secondary)
             }
         }
-        LazyVerticalGrid(columns = GridCells.Adaptive(132.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(tables) { table ->
-                TableTile(table = table) {
-                    scope.launch { onOpenOrder(viewModel.open(table)) }
+        LazyVerticalGrid(columns = GridCells.Adaptive(148.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(tables, key = { it.table.id }) { card ->
+                TableTile(table = card) {
+                    scope.launch { onOpenOrder(viewModel.open(card.table)) }
                 }
             }
         }
@@ -56,9 +56,11 @@ fun TablesScreen(
 }
 
 @Composable
-private fun TableTile(table: com.restopro.captain.data.local.entity.RestaurantTableEntity, open: () -> Unit) {
-    val color = when (table.state) {
+private fun TableTile(table: TableCardUi, open: () -> Unit) {
+    val state = table.table.state.uppercase()
+    val color = when (state) {
         "RUNNING" -> Color(0xFFE0F2FE)
+        "READY" -> Color(0xFFDCFCE7)
         "RESERVED" -> Color(0xFFFFF7ED)
         "BILLED" -> Color(0xFFE2E8F0)
         else -> Color.White
@@ -66,16 +68,17 @@ private fun TableTile(table: com.restopro.captain.data.local.entity.RestaurantTa
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(color, RoundedCornerShape(8.dp))
+            .background(color, RoundedCornerShape(10.dp))
             .clickable(onClick = open)
             .padding(12.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(table.name, style = MaterialTheme.typography.titleLarge)
-            Text(table.hallName, color = MaterialTheme.colorScheme.secondary)
-            Text(table.state)
-            Text("Guests ${table.guestCount}  Items ${table.runningItemCount}")
-            table.captainName?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(table.table.name, style = MaterialTheme.typography.titleLarge)
+            Text("Pax ${table.table.guestCount} • ${table.table.hallName}", color = MaterialTheme.colorScheme.secondary)
+            Text("Status $state")
+            Text("Running ${table.runningMinutes} min")
+            Text("Amount ₹${"%.2f".format(table.orderAmount)}")
+            table.table.captainName?.let { Text("Captain $it", color = MaterialTheme.colorScheme.primary) }
         }
     }
 }

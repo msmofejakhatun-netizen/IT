@@ -19,6 +19,9 @@ data class LoginUiState(
     val remember: Boolean = true,
     val loading: Boolean = false,
     val connectionOk: Boolean? = null,
+    val latencyMs: Long? = null,
+    val connectionQuality: String? = null,
+    val snack: String? = null,
     val error: String? = null,
     val loggedIn: Boolean = false
 )
@@ -57,12 +60,34 @@ class LoginViewModel @Inject constructor(
     fun testConnection() = viewModelScope.launch {
         val server = state.value.serverIp
         _state.update { it.copy(loading = true, error = null, connectionOk = null) }
-        val ok = authRepository.testConnection(server)
-        _state.update { it.copy(loading = false, connectionOk = ok, error = if (ok) null else "Server not reachable") }
+        runCatching { authRepository.testConnection(server) }
+            .onSuccess { ping ->
+                val status = when {
+                    !ping.ok -> "❌ Failed"
+                    ping.quality == "SLOW" -> "⚠ Slow Connection"
+                    else -> "✅ Connected"
+                }
+                _state.update { it.copy(loading = false, connectionOk = ping.ok, latencyMs = ping.latencyMs, connectionQuality = ping.quality, snack = "$status (${ping.latencyMs} ms)", error = if (ping.ok) null else "Server unreachable") }
+            }
+            .onFailure { _state.update { it.copy(loading = false, connectionOk = false, error = "LAN disconnected or server offline") } }
     }
+
+    fun consumeSnack() { _state.update { it.copy(snack = null) } }
 
     fun login() = viewModelScope.launch {
         val s = state.value
+        if (s.restaurantCode.isBlank() || s.username.isBlank() || s.password.isBlank() || s.serverIp.isBlank()) {
+            _state.update { it.copy(error = "All fields are required") }
+            return@launch
+        }
+        if (s.password.length < 4) {
+            _state.update { it.copy(error = "Password too short") }
+            return@launch
+        }
+        if (!authRepository.validateLanIp(s.serverIp)) {
+            _state.update { it.copy(error = "Invalid LAN IP. Use 192.168.x.x") }
+            return@launch
+        }
         _state.update { it.copy(loading = true, error = null) }
         runCatching {
             loginUseCase(s.restaurantCode, s.username, s.password, s.serverIp, s.remember)
@@ -74,7 +99,7 @@ class LoginViewModel @Inject constructor(
                 it.copy(
                     loading = false,
                     loggedIn = offline != null,
-                    error = if (offline == null) error.message ?: "Login failed" else null
+                    error = if (offline == null) error.message ?: "Invalid credentials / server unreachable" else null
                 )
             }
         }

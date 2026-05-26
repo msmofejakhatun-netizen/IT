@@ -26,7 +26,9 @@ data class DashboardUiState(
     val runningOrders: Int = 0,
     val occupiedTables: Int = 0,
     val pendingKot: Int = 0,
-    val socketConnected: Boolean = false
+    val socketConnected: Boolean = false,
+    val todaySales: Double = 0.0,
+    val shiftStatus: String = "OPEN"
 )
 
 @HiltViewModel
@@ -52,7 +54,9 @@ class DashboardViewModel @Inject constructor(
             runningOrders = orders.size,
             occupiedTables = tables.count { it.state == "RUNNING" },
             pendingKot = orders.count { it.status == "CART" || it.status == "KOT_SENT" },
-            socketConnected = connected
+            socketConnected = connected,
+            todaySales = orders.filter { it.createdAt >= System.currentTimeMillis() - 86_400_000L }.sumOf { it.total },
+            shiftStatus = if (connected) "LIVE" else "OFFLINE"
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 

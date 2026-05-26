@@ -21,6 +21,9 @@ class ServerConfigStore @Inject constructor(
 ) {
     private val baseUrlKey = stringPreferencesKey("server_base_url")
     private val tokenKey = stringPreferencesKey("jwt_token")
+    private val usernameKey = stringPreferencesKey("username")
+    private val restaurantCodeKey = stringPreferencesKey("restaurant_code")
+    private val serverIpKey = stringPreferencesKey("server_ip")
 
     val baseUrl: Flow<String> = context.serverDataStore.data.map {
         it[baseUrlKey].orEmpty().ifBlank { Constants.DEFAULT_BASE_URL }
@@ -40,6 +43,14 @@ class ServerConfigStore @Inject constructor(
 
     suspend fun saveToken(token: String) {
         context.serverDataStore.edit { it[tokenKey] = secureTextCipher.encrypt(token) }
+    }
+
+    suspend fun saveLoginHints(username: String, restaurantCode: String, serverIp: String) {
+        context.serverDataStore.edit {
+            it[usernameKey] = username
+            it[restaurantCodeKey] = restaurantCode
+            it[serverIpKey] = serverIp
+        }
     }
 
     private fun normalizeBaseUrl(value: String): String {

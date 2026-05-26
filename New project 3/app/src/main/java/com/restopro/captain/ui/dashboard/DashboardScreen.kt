@@ -49,10 +49,11 @@ fun DashboardScreen(
             Text(if (state.socketConnected) "Realtime" else "Offline queue", color = if (state.socketConnected) MaterialTheme.colorScheme.primary else Color(0xFFF97316))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            MetricCard("Today's Sales", "₹${"%.0f".format(state.todaySales)}", Modifier.weight(1f))
             MetricCard("Running Orders", state.runningOrders.toString(), Modifier.weight(1f))
-            MetricCard("Occupied Tables", state.occupiedTables.toString(), Modifier.weight(1f))
             MetricCard("Pending KOT", state.pendingKot.toString(), Modifier.weight(1f))
         }
+        Text("Shift ${state.shiftStatus} • Active Tables ${state.occupiedTables}", color = MaterialTheme.colorScheme.secondary)
         Text("Quick Actions", style = MaterialTheme.typography.titleMedium)
         val actions = buildList {
             add(Action("Tables", Icons.Outlined.TableRestaurant, openTables))
