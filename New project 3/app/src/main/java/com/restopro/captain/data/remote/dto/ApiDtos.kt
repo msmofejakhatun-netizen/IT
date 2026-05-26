@@ -3,7 +3,8 @@ package com.restopro.captain.data.remote.dto
 data class LoginRequest(
     val restaurantCode: String,
     val username: String,
-    val password: String
+    val password: String,
+    val serverIp: String
 )
 
 data class LoginResponse(
@@ -11,6 +12,8 @@ data class LoginResponse(
     val captainName: String,
     val username: String,
     val role: String,
+    val permissions: List<String> = emptyList(),
+    val branch: String? = null,
     val restaurantId: String,
     val restaurantName: String,
     val token: String,
@@ -88,3 +91,4 @@ data class KotRequest(val orderId: String, val reprint: Boolean = false)
 data class SyncEnvelope(val operation: String, val entityType: String, val payloadJson: String)
 data class SyncResult(val accepted: Boolean, val serverId: String?, val message: String?)
 data class HealthResponse(val ok: Boolean, val restaurantName: String?)
+data class PingResponse(val ok: Boolean, val latencyMs: Long, val quality: String)

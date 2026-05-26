@@ -10,6 +10,11 @@ import com.restopro.captain.domain.model.Role
 import com.restopro.captain.utils.LanServerDetector
 import com.restopro.captain.utils.SecureTextCipher
 import com.restopro.captain.utils.ServerConfigStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.InetAddress
+import java.net.UnknownHostException
+import kotlin.system.measureTimeMillis
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,8 +42,10 @@ class AuthRepository @Inject constructor(
                 rememberLogin = remember
             )
         )
-        val response = authApi.login(LoginRequest(restaurantCode, username, password))
+        val response = authApi.login(LoginRequest(restaurantCode, username, password, serverIp))
+        require(response.role.equals("CAPTAIN", ignoreCase = true)) { "Unauthorized captain role: ${response.role}" }
         serverConfigStore.saveToken(response.token)
+        serverConfigStore.saveLoginHints(username, restaurantCode, serverIp)
         settingsDao.saveCaptain(
             CaptainEntity(
                 id = response.captainId,
@@ -73,12 +80,25 @@ class AuthRepository @Inject constructor(
         )
     }
 
-    suspend fun testConnection(serverIp: String): Boolean {
+    suspend fun testConnection(serverIp: String): com.restopro.captain.data.remote.dto.PingResponse {
         serverConfigStore.saveServer(serverIp.toBaseUrl())
-        return runCatching { authApi.health().ok }.getOrDefault(false)
+        val elapsed = measureTimeMillis { authApi.health() }
+        val ok = runCatching { authApi.health().ok }.getOrDefault(false)
+        val quality = when {
+            !ok -> "FAILED"
+            elapsed > 500 -> "SLOW"
+            else -> "GOOD"
+        }
+        return com.restopro.captain.data.remote.dto.PingResponse(ok = ok, latencyMs = elapsed, quality = quality)
     }
 
     suspend fun autoDetectServer(): String? = lanServerDetector.findServer()
+
+    suspend fun validateLanIp(serverIp: String): Boolean = withContext(Dispatchers.Default) {
+        val host = serverIp.trim().removePrefix("http://").removePrefix("https://").substringBefore(":").substringBefore("/")
+        if (!host.startsWith("192.168.")) return@withContext false
+        try { InetAddress.getByName(host) != null } catch (_: UnknownHostException) { false }
+    }
 
     private fun String.toBaseUrl(): String {
         val trimmed = trim()

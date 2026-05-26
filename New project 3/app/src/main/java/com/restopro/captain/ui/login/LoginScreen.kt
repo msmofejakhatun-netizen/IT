@@ -22,6 +22,9 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,8 +45,12 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val snack = remember { SnackbarHostState() }
     LaunchedEffect(state.loggedIn) {
         if (state.loggedIn) onLoggedIn()
+    }
+    LaunchedEffect(state.snack) {
+        state.snack?.let { snack.showSnackbar(it); viewModel.consumeSnack() }
     }
 
     Column(
@@ -57,6 +64,8 @@ fun LoginScreen(
         Text("RestoPro Captain", style = MaterialTheme.typography.headlineMedium)
         Text("Native LAN ordering terminal", color = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.height(24.dp))
+        SnackbarHost(hostState = snack)
+        Spacer(Modifier.height(8.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
@@ -102,6 +111,7 @@ fun LoginScreen(
                     Spacer(Modifier.weight(1f))
                     state.connectionOk?.let {
                         Text(if (it) "LAN OK" else "Offline", color = if (it) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                        state.latencyMs?.let { ms -> Text("  ${ms}ms", color = MaterialTheme.colorScheme.secondary) }
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
