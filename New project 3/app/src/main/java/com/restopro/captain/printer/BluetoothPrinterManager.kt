@@ -43,6 +43,15 @@ class BluetoothPrinterManager @Inject constructor(
         write(address, formatter.test())
     }
 
+    suspend fun printRaw(address: String, payload: ByteArray) {
+        write(address, payload)
+    }
+
+    suspend fun healthCheck(address: String): Boolean = runCatching {
+        write(address, formatter.test())
+        true
+    }.getOrDefault(false)
+
     @SuppressLint("MissingPermission")
     private suspend fun write(address: String, bytes: ByteArray) = withContext(Dispatchers.IO) {
         require(hasBluetoothPermission()) { "Bluetooth permission is required" }

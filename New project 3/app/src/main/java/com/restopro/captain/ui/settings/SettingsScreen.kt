@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,37 +38,40 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        viewModel.refreshPrinters()
-    }
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= 31) permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-    }
-    Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.refreshPrinters() }
+    LaunchedEffect(Unit) { if (Build.VERSION.SDK_INT >= 31) permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }
+
+    Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row {
             IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, contentDescription = "Back") }
             Column {
-                Text("Printer Setup", style = MaterialTheme.typography.headlineSmall)
-                Text("Native Bluetooth ESC/POS thermal printers", color = MaterialTheme.colorScheme.secondary)
+                Text("Enterprise Printer Setup", style = MaterialTheme.typography.headlineSmall)
+                Text("Bluetooth / USB / LAN", color = MaterialTheme.colorScheme.secondary)
             }
         }
-        Button(onClick = viewModel::refreshPrinters) { Text("Refresh Paired Printers") }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.printers, key = { it.address }) { printer ->
-                Card(Modifier.fillMaxWidth().clickable { viewModel.selectPrinter(printer.address) }) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = state.lanAddress, onValueChange = viewModel::setLanAddress, label = { Text("LAN host:port") }, modifier = Modifier.weight(1f))
+            Button(onClick = viewModel::addLanPrinter) { Text("Add LAN") }
+        }
+        Button(onClick = viewModel::refreshPrinters) { Text("Discover Printers") }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+            items(state.printers, key = { it.id }) { printer ->
+                Card(Modifier.fillMaxWidth().clickable { viewModel.selectPrinter(printer) }) {
                     Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.Bluetooth, contentDescription = null)
                         Column(Modifier.weight(1f)) {
                             Text(printer.name, fontWeight = FontWeight.SemiBold)
-                            Text(printer.address, color = MaterialTheme.colorScheme.secondary)
+                            Text("${printer.transport} • ${printer.address}", color = MaterialTheme.colorScheme.secondary)
                         }
-                        if (state.selectedAddress == printer.address) Text("Selected", color = MaterialTheme.colorScheme.primary)
+                        if (state.selected?.id == printer.id) Text("Selected", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
         }
-        Button(onClick = viewModel::testPrint, enabled = state.selectedAddress != null) {
-            Text("Test Print")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = viewModel::testPrint, enabled = state.selected != null, modifier = Modifier.weight(1f)) { Text("Test") }
+            Button(onClick = viewModel::healthCheck, enabled = state.selected != null, modifier = Modifier.weight(1f)) { Text("Health") }
+            Button(onClick = viewModel::retryQueue, modifier = Modifier.weight(1f)) { Text("Retry Queue") }
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
     }
